@@ -11,7 +11,57 @@ use crate::tool::generate_dotfile_bst;
 fn main() {
     //turn on to test the old code
     // test_binary_tree();
-    test_binary_search_tree();
+    // test_binary_search_tree();
+    test_bst_insert_delete_transplant()
+}
+
+fn test_bst_insert_delete_transplant() {
+
+    println!("=== BST INSERT / DELETE / TRANSPLANT TEST ===");
+
+    let values = [15, 6, 18, 3, 7, 17, 20, 2, 4, 9, 13];
+    let root_node = BstNode::new_bst_nodelink(values[0]);
+    
+    for &v in &values[1..] {
+        BstNode::tree_insert(&root_node, v);
+        println!("Inserted value: {}", v);
+    }    
+
+    // Store root in mutable Option
+    let mut root: Option<BstNodeLink> = Some(root_node.clone());
+
+    // Save tree before deletion
+    crate::tool::generate_dotfile_bst(&root_node, "bst_after_insert.dot");
+
+    // Delete nodes
+    for key in [13, 18, 4, 6, 99] {
+
+        let current_root = root.as_ref().cloned();
+    
+        if let Some(r) = current_root {
+
+            let search_result = {
+
+                r.borrow().tree_search(&key)
+            };
+    
+            if let Some(node) = search_result {
+
+                if let Some(ref mut r) = root {
+                    r.borrow_mut().tree_delete(Some(node.clone()), node.borrow().key.unwrap());
+                }
+                
+                println!("Deleted node {}.", key);
+            } else {
+                println!("Node {} not found, skipping delete", key);
+            }
+        }
+    }       
+
+    // Save tree after deletion
+    if let Some(ref r) = root {
+        crate::tool::generate_dotfile_bst(r, "bst_after_delete.dot");
+    }
 }
 
 fn test_binary_search_tree(){

@@ -219,4 +219,155 @@ impl BstNode {
             Some(x) => Some(x.upgrade().unwrap()),
         }
     }
+
+    pub fn minimum_from(node: &BstNodeLink) -> BstNodeLink {
+        node.borrow().minimum()
+    }    
+
+    pub fn tree_insert(root: &BstNodeLink, key: i32) {
+        let mut y: Option<BstNodeLink> = None;
+        let mut x = Some(root.clone());
+        let z = BstNode::new_bst_nodelink(key);
+    
+        while let Some(node) = x {
+            y = Some(node.clone());
+            let current_key = node.borrow().key.unwrap();
+    
+            if key < current_key {
+                x = node.borrow().left.clone();
+            } else {
+                x = node.borrow().right.clone();
+            }
+        }
+    
+        if let Some(parent) = y {
+            z.borrow_mut().parent = Some(Rc::downgrade(&parent));
+            let parent_key = parent.borrow().key.unwrap();
+    
+            if key < parent_key {
+                parent.borrow_mut().left = Some(z);
+            } else {
+                parent.borrow_mut().right = Some(z);
+            }
+        }
+    }    
+    
+    fn transplant(&mut self, old_node: Option<BstNodeLink> ,new_node: Option<BstNodeLink>){
+        if self.left.is_some() && self.left.clone().unwrap().borrow().key.unwrap() == old_node.clone().unwrap().borrow().key.unwrap(){
+            if new_node.is_none(){
+                self.left = new_node.clone();
+            }else{
+                new_node.clone().unwrap().borrow_mut().parent = old_node.clone().unwrap().borrow().parent.clone();
+                self.left = new_node.clone();
+            }
+        }
+        if self.right.is_some() && self.right.clone().unwrap().borrow().key.unwrap() == old_node.clone().unwrap().borrow().key.unwrap(){
+            if new_node.is_none(){
+                self.right = new_node.clone();
+            }else{
+                new_node.clone().unwrap().borrow_mut().parent = old_node.clone().unwrap().borrow().parent.clone();
+                self.right = new_node.clone();
+            }
+        }
+        if new_node.is_some(){
+            new_node.unwrap().borrow_mut().parent = old_node.unwrap().borrow().parent.clone();
+        }
+    }
+
+    pub fn tree_delete(&mut self, target: Option<BstNodeLink>, value: i32){
+        if let Some(node) = target{
+            if node.borrow().right.is_some() && node.borrow().left.is_none() {
+                if node.clone().borrow().parent.is_some(){
+                    let target_right = node.borrow().right.clone();
+                    let node_parent = node.borrow().parent.clone();
+                    let strong_parent = BstNode::upgrade_weak_to_strong(node_parent).unwrap();
+                    let parent_left = strong_parent.borrow().left.clone();
+                    let parent_right = strong_parent.borrow().right.clone();
+                    if target_right.clone().unwrap().borrow().key.unwrap() < strong_parent.clone().borrow().key.unwrap() {
+                        strong_parent.borrow_mut().transplant(parent_left, target_right);
+                    }else{
+                        strong_parent.borrow_mut().transplant(parent_right, target_right);
+                    }
+                }
+            }
+            else if node.borrow().left.is_some() && node.borrow().right.is_none() {
+                if node.clone().borrow().parent.is_some(){
+                    let target_left = node.borrow().left.clone();
+                    let node_parent = node.borrow().parent.clone();
+                    let strong_parent = BstNode::upgrade_weak_to_strong(node_parent).unwrap();
+                    let parent_left = strong_parent.borrow().left.clone();
+                    let parent_right = strong_parent.borrow().right.clone();
+                    if target_left.clone().unwrap().borrow().key.unwrap() < strong_parent.clone().borrow().key.unwrap() {
+                        strong_parent.borrow_mut().transplant(parent_left, target_left);
+                    }else{
+                        strong_parent.borrow_mut().transplant(parent_right, target_left);
+                    }
+                }
+            }
+            else if node.borrow().left.is_some() && node.borrow().right.is_some(){
+                if node.borrow().parent.is_some(){
+                    let node_parent = node.borrow().parent.clone();
+                    let strong_parent = BstNode::upgrade_weak_to_strong(node_parent).unwrap();
+                    if node.borrow().key.unwrap() != self.left.clone().unwrap().borrow().key.unwrap() && node.borrow().key.unwrap() != self.right.clone().unwrap().borrow().key.unwrap(){
+
+                        let y = node.borrow().right.clone().unwrap().borrow().minimum();
+                        let y_parent = BstNode::upgrade_weak_to_strong(y.borrow().parent.clone()).unwrap();
+                        if BstNode::is_node_match(&node, &y_parent) == false{
+                            y_parent.borrow_mut().transplant(Some(y.clone()), y.borrow().right.clone());
+                            if y.borrow().right.is_some(){
+                                y.borrow_mut().right = node.borrow().right.clone();
+                                y.borrow_mut().right.as_ref().unwrap().borrow_mut().parent = Some(BstNode::downgrade(&y));
+                            }else{
+                                y.borrow_mut().right = None;
+                            }
+                        }
+                        strong_parent.borrow_mut().transplant(Some(node.clone()), Some(y.clone()));
+                        y.borrow_mut().left = node.borrow().left.clone();
+                        y.borrow_mut().left.as_ref().unwrap().borrow_mut().parent = Some(BstNode::downgrade(&y));
+                    }else{
+                        let y = node.borrow().right.clone().unwrap().borrow().minimum();
+                        let y_parent = BstNode::upgrade_weak_to_strong(y.borrow().parent.clone()).unwrap();
+                        if BstNode::is_node_match(&node, &y_parent) == false{
+                            y_parent.borrow_mut().transplant(Some(y.clone()), y.borrow().right.clone());
+                            if y.borrow().right.is_some(){
+                                y.borrow_mut().right = node.borrow().right.clone();
+                                y.borrow_mut().right.as_ref().unwrap().borrow_mut().parent = Some(BstNode::downgrade(&y));
+                            }else{
+                                y.borrow_mut().right = None;
+                            }
+                        }
+                        y.borrow_mut().left = node.borrow().left.clone();
+                        y.borrow_mut().left.as_ref().unwrap().borrow_mut().parent = Some(BstNode::downgrade(&y));
+                        if y.borrow().key.unwrap() < self.key.unwrap(){
+                            self.left = Some(y.clone());
+                        }else{
+                            self.right = Some(y.clone());
+                        }
+                    }
+                }else{
+                    let y = node.borrow().right.clone().unwrap().borrow().minimum().clone();
+                    let y_parent = BstNode::upgrade_weak_to_strong(y.borrow().parent.clone()).unwrap();
+                    y_parent.borrow_mut().transplant(Some(y.clone()), None);
+                    self.key = y.borrow().key;
+                    self.right = Some(y_parent.clone());
+                }
+            }
+            else if node.borrow().left.is_none() && node.borrow().right.is_none(){
+                if node.clone().borrow().parent.is_some(){
+                    let node_parent = node.borrow().parent.clone();
+                    let strong_parent = BstNode::upgrade_weak_to_strong(node_parent).unwrap();
+                    let parent_left = strong_parent.borrow().left.clone();
+                    let parent_right = strong_parent.borrow().right.clone();
+                    if value < strong_parent.borrow().key.unwrap(){
+                        strong_parent.borrow_mut().transplant(parent_left, None);
+                    }else{
+                        strong_parent.borrow_mut().transplant(parent_right, None);
+                    }
+                }
+                else{
+                    self.key = None;
+                }
+            }
+        }
+    }
 }
